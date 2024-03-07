@@ -1,25 +1,33 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import check_password_hash
 
 db=SQLAlchemy
 
-class TableModel (db.Model):
+class UserModel(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    table_number = db.Column(db.Integer)
-    capacity = db.Column(db.Integer)
-    status = db.Column(db.String)
-    staff_id = db.Column(db.Integer, db.ForeignKey('staff.id'))
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    phone_number=db.Column(db.String(),unique=True)
+    address = db.Column(db.String(64))
+    role=db.Column(db.String(30), default='member')
+    password = db.Column(db.String(64))
+    created_at=db.Column(db.TIMESTAMP(),default=db.func.now())
+    updated_at=db.Column(db.TIMESTAMP(),onupdate=db.func.now())
+    products=db.relationship("ProductModel", backref="users",lazy=True) 
+    reviews=db.relationship("ReviewModel", backref="users", lazy=True)
+    orders=db.relationship("OrderModel",backref="users",lazy=True)
+ 
+    def check_password(self, plain_password):
+        return check_password_hash(self.password, plain_password)
 
-class CustomerModel(db.Model): 
-    __tablename__ = 'customers'
-
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String)
-    email = db.Column(db.String, unique=True)
-    phone_number = db.Column(db.Integer, unique=True)
-    # status = db.Column(db.String, nullable=False)
-
+    def to_json(self):
+        return {
+            'id': self.id,
+            'role': self.role,
+        }
+    
 class OrderModel(db.Model):
     __tablename__= 'orders'
 
@@ -28,16 +36,18 @@ class OrderModel(db.Model):
     total_amount = db.Column(db.Integer)
     status = db.Column(db.String, nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'))
-    table_id = db.Column(db.Integer, db.ForeignKey('tables.id'))
 
-class MenuItemsModel(db.Model):
-    __tablename__ = 'menuItems'
+class ProductModel(db.Model):
+    __tablename__ = 'products'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, unique=True)
-    description = db.Column(db.String)
+    name = db.Column(db.String(80), unique=True)
+    description = db.Column(db.Text)
     price = db.Column(db.Integer)
+    image_url=db.Column(db.String, nullable=False)
+    stock_quantity = db.Column(db.Integer)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
+    reviews = db.relationship("ReviewModel", backref="products", lazy=True)
 
 class CategoryModel(db.Model):
     __tablename__ = 'categories'
@@ -46,25 +56,6 @@ class CategoryModel(db.Model):
     name=db.Column(db.String(50),nullable=False)
     image_url=db.Column(db.String, nullable=False)
     
-class StaffModel(db.Model):
-    __tablename__= 'staff'
-
-    id = db.Column(db.Integer, primary_key=True)
-    first_name=db.Column(db.String(50),nullable=False)
-    last_name=db.Column(db.String(50),nullable=False)
-    role=db.Column(db.String(50),nullable=False)
-    hire_date = db.Column(db.DateTime, server_default=db.func.now())
-
-class ReservationModel(db.Model):
-    __tablename__ = 'reservations'
-
-    id = db.Column(db.Integer, primary_key=True)
-    reservation_date = db.Column(db.DateTime, server_default=db.func.now())
-    reservation_time = db.Column(db.DateTime, server_default=db.func.now())
-    party_size = db.Column(db.Integer)
-    customer_id= db.Column(db.Integer, db.ForeignKey('customers.id'))
-    table_id= db.Column(db.Integer, db.ForeignKey('tables.id'))
-
 
 class ReviewModel(db.Model):
     __tablename__ = 'reviews'
@@ -78,7 +69,7 @@ class ReviewModel(db.Model):
 
 class PaymentModel(db.Model):
     __tablename__ = 'payments'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float)
     payment_type = db.Column(db.String(50), nullable=False)
